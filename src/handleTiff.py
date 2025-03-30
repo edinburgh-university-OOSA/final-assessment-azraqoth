@@ -10,7 +10,6 @@ A class to handle geotiffs
 from pyproj import Proj, transform # package for reprojecting data
 from osgeo import gdal             # package for handling geotiff data
 from osgeo import osr              # package for handling projection information
-from gdal import Warp
 import numpy as np
 
 
