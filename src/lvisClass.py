@@ -50,6 +50,9 @@ class lvisData(object):
     tempLon=(lon0+lonN)/2.0
     tempLat=(lat0+latN)/2.0
 
+    # Convert longitudes from 0–360 to -180–180 if needed
+    tempLon = np.where(tempLon > 180, tempLon - 360, tempLon)
+
     # write out bounds and leave if needed
     if(onlyBounds):
       self.lon=tempLon
@@ -57,7 +60,7 @@ class lvisData(object):
       self.bounds=self.dumpBounds()
       self.nWaves=0
       return
-
+    
     # dertermine which are in region of interest
     useInd=np.where((tempLon>=minX)&(tempLon<maxX)&(tempLat>=minY)&(tempLat<maxY))
     if(len(useInd)>0):

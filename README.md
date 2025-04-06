@@ -1,122 +1,174 @@
-# OOSA Assignment 2025
+# 🌍 Pine Island Glacier LVIS DEM Processing (OOSA Final Assessment 2024)
 
-This contains the files needed for the 2025 OOSA assignment. The raw LVIS data can be downloaded from [here](https://lvis.gsfc.nasa.gov/Data/Data_Download.html), but files over the Pine Island Glacier have been provided on the teaching drive.  We will be using files from [Operation IceBridge](https://www.nasa.gov/mission_pages/icebridge/index.html), which bridged the gap between ICESat and ICESat-2 using aircraft.
+This project processes NASA LVIS waveform LiDAR data to generate Digital Elevation Models (DEMs) for Pine Island Glacier (PIG) from 2009 and 2015, identify elevation changes, and estimate ice volume loss. The workflow includes waveform visualization, tiling, DEM generation, optional gap filling, and change detection.
+
+---
+
+## 📁 Project Structure
+
+```
+final-assessment-azraqoth/
+├── additional/
+│   ├── task1_plot_waveform.py
+│   ├── task234_create_dem.py
+│   ├── task5_calculate_DEM.py
+│   ├── file_selection.py
+│   ├── tile_processor.py
+│   ├── lvis_dem_tools.py
+│   └── data/
+│       ├── bound2.geojson
+│       ├── valid_2009_files.txt
+│       └── valid_2015_files.txt
+│
+├── src/
+│   ├── processLVIS.py
+│   ├── lvisClass.py
+│   ├── handleTiff.py
+│   └── lvisExample.py
+│
+├── figures/
+│   ├── task_1.png
+│   ├── task_2.png
+│   ├── task_3.png
+│   ├── task_4.png
+│   └── task_5.png
+│
+├── requirements.txt
+└── README.md
+```
+
+---
+
+## ⚙️ Setup
+
+Install required packages:
+
+```bash
+pip install -r requirements.txt
+```
+
+---
+
+## 🧪 File Selection
+
+Before any DEM processing, generate the list of `.h5` files that intersect your AOI:
+
+```bash
+python additional/file_selection.py --folder additional/data
+```
+
+Creates `valid_2009_files.txt` or `valid_2015_files.txt` in the `data/` folder using `bound2.geojson` (EPSG:3031).
+
+---
+
+## 🛰 Task 1 – Plot LVIS Waveform
+
+**Description**: Visualize waveform data from an individual LVIS shot to understand intensity patterns and locate ground returns.  
+**Input**: `.h5` file, waveform index  
+**Output**: `.png` plot of intensity vs. elevation
+
+```bash
+python additional/task1_plot_waveform.py additional/data/ILVIS1B_*.h5 1000 --output figures/task_1.png
+```
+
+![Task 1](figures/task_1.png)
+
+---
+
+## 🧱 Task 2 – DEM from a Single File (Tiled Output)
+
+**Description**: Processes a single `.h5` file, generates elevation data, and outputs as multiple tiled GeoTIFFs with projection EPSG:3031.  
+**Input**: One LVIS file, spatial resolution, number of tiles  
+**Output**: Merged DEM raster for the selected file
+
+```bash
+python additional/task234_create_dem.py \
+  --folder additional/data \
+  --list valid_2015_files.txt \
+  --test_files ILVIS1B_*.h5 \
+  --res 50 \
+  --tiles 20 \
+  --output_dir output/output_tiles \
+  --output output/task2.tif
+```
+
+![Task 2](figures/task_2.png)
+
+---
+
+## 🗺 Task 3 – Full DEM via Tiling and Merging
+
+**Description**: Automatically tiles, processes, and merges all valid LVIS files into one complete DEM for the entire AOI.  
+**Input**: List of valid `.h5` files from file selection step  
+**Output**: Merged full-area DEM GeoTIFF
+
+```bash
+python additional/task234_create_dem.py \
+  --folder additional/data \
+  --list valid_2015_files.txt \
+  --res 50 \
+  --tiles 20 \
+  --output_dir output/output_tiles \
+  --output output/task3.tif
+```
+
+![Task 3](figures/task_3.png)
+
+---
+
+## 🧩 Task 4 – Gap-Filled DEM
+
+**Description**: Fills missing or sparse regions using a mean filter applied over each tile’s 5×5 neighborhood.  
+**Input**: Same as Task 3 with `--fill` flag  
+**Output**: Smooth, gap-filled DEM ready for analysis
+
+```bash
+python additional/task234_create_dem.py \
+  --folder additional/data \
+  --list valid_2009_files.txt \
+  --res 50 \
+  --tiles 20 \
+  --fill \
+  --output_dir output/output_tiles \
+  --output output/task4.tif
+```
+
+![Task 4](figures/task_4.png)
+
+---
+
+## 🧊 Task 5 – Elevation Change and Volume Loss
+
+**Description**: Calculates elevation change between 2009 and 2015 DEMs and estimates total volume difference over the AOI.  
+**Input**: Two DEMs (2009, 2015)  
+**Output**: Elevation difference GeoTIFF and volume loss value in cubic meters
+
+```bash
+python additional/task5_calculate_DEM.py \
+  --folder output \
+  --output_diff output/task5_change.tif
+```
+
+![Task 5](figures/task_5.png)
+
+---
+
+## 🔧 CLI Options Summary
+
+- `--folder`: Folder containing LVIS `.h5` files
+- `--list`: Text file of valid filenames (e.g., `valid_2015_files.txt`)
+- `--test_files`: Run only on selected `.h5` files
+- `--res`: DEM resolution (in meters)
+- `--tiles`: Number of tiles per row/column
+- `--fill`: Apply mean filter for gap-filling
+- `--output_dir`: Directory for intermediate tile GeoTIFFs
+- `--output`: Final merged DEM filename
+- `--output_diff`: Output elevation change raster (Task 5)
 
 
-## lvisClass.py
+---
 
-A class to handle LVIS data. This class reads in LVIS data from a HDF5 file, stores it within the class. It also contains methods to convert from the compressed elevation format and return attributes as numpy arrays. Note that LVIS data is stored in WGS84 (EPSG:4326).
+## 📝 License
 
-The class is:
-
-**lvisData**
-
-The data is stored as the variables:
-
-    waves:   Lidar waveforms as a 2D numpy array
-    lon:     Longitude as a 1D numpy array
-    lat:     Latitude as a 1D numpy array
-    nWaves:  Number of waveforms in this file as an integer
-    nBins:   Number of bins per waveform as an integer
-    lZN:     Elevation of the bottom waveform bin
-    lZ0:     Elevation of the top waveform bin
-    lfid:    LVIS flight ID integer
-    shotN:   LVIS shot number for this flight
-
-
-The data should be read as:
-
-    from lvisClass import lvisData
-    lvis=lvisData(filename)
-
-
-There is an optional spatial subsetter for when dealing with large datasets.
-
-    lvis=lvisData(filename,minX=x0,minY=y0,maxX=x1,maxX=x1)
-
-Where (x0,y0) is the bottom left coordinate of the area of interest and (x1,y1) is the top right.
-
-To help choose the bounds, the bounds only can be read from the file, to save time and RAM:
-
-    lvisData(filename,onlyBounds=True)
-
-
-The elevations can be set on reading:
-
-    lvis=lvisData(filename,seteElev=True)
-
-Or later by calling the method:
-
-    lvis.setElevations()
-
-This will add the attribute:
-
-    lvis.z:    # 2D numpy array of elevations of each waveform bin
-
-
-The class includes the methods:
-
-* setElevations(): converts the compressed elevations in to arrays of elevation, z.
-* getOneWave(ind): returns one waveform as an array
-* dumpCoords():    returns all coordinates as two numpy arrays
-* dumpBounds():    returns the minX,minY,maxX,maxY
-
-
-### Using the class in code
-
-    # import and read bounds
-    from lvisClass import lvisData
-    bounds=lvisData(filename,onlyBounds=True)
-      
-    # set bounds
-    x0=bounds[0]
-    y0=bounds[1]
-    x1=(bounds[2]-minX)/2+minX
-    y1=(bounds[3]-minY)/2+minY
-     
-    # read data
-    lvis=lvisData(filename,minX=x0,minY=y0,maxX=x1,maxY=y1)
-    lvis.setElevations()
-
-This will find the data's bounds, read the bottom left quarter of it in to RAM, then set the elevation arrays. The data is now ready to be processed
-
-
-## processLVIS.py
-
-Includes a class with methods to process LVIS data. This inherits from **lvisData** in *lvisClass.py*. The initialiser is not overwritten and expects an LVIS HDF5 filename. The following methods are added:
-
-* estimateGround():    Processes the waveforms and z arrays set above to populate self.zG
-* reproject():         Reprojects horizontal coordinates
-* findStats():         Used by estimateGround()
-* denoise(thresh):     Used by estimateGround()
-
-Some parameters are provided, but in all cases the defaults should be suitable. Further information on the signal processing steps and variable names can be found in [this](https://www.sciencedirect.com/science/article/pii/S0034425716304205) paper.
-
-
-### Using the class in code
-
-    from processLVIS import lvisGround
-    lvis=lvisGround(filename)
-    lvis.setElevations()
-    lvis.estimateGround()
-
-Note that the estimateGround() method can take a long time. It is recommended to perform time tests with a subset of data before applying to a complete file. This will produce an array of ground elevations contained in:
-
-    lvis.zG
-
-
-## lvisExample.py
-
-Contains an example of how to call processLVIS.py on a 15th of a dataset. Intended for testing only. It could form the centre of a batch loop. It is a simple script with no options.
-
-
-## handleTiff.py
-
-Examples of how to write and read a geotiff embedded within a class. This is not a complete script, has no initialiser and so will not run in its current form.
-
-
-* writeTiff(data):     writes raster data to a geotiff (*data* class needs modifying)
-* readTiff(filename): reads the geotiff in *filename* to a numpy array with metadata
-
-Note that geotiffs read the y axis from the top, so be careful when unpacking or packing data, otherwise the z axis will be flipped.
+Created for academic use in the 2024 OOSA final assessment.
 

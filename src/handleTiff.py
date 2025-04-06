@@ -12,7 +12,6 @@ from osgeo import gdal             # package for handling geotiff data
 from osgeo import osr              # package for handling projection information
 import numpy as np
 
-
 #######################################################
 
 class tiffHandle():
@@ -22,16 +21,33 @@ class tiffHandle():
 
   ########################################
 
-  def __init__(self,filename):
-    '''
-    Class initialiser
-    Does nothing as this is only an example
-    '''
+  def __init__(self, filename=None, minX=None, maxX=None, minY=None, maxY=None, res=None, data=None, epsg=3031):
+    self.filename = filename
+    self.minX = minX
+    self.maxX = maxX
+    self.minY = minY
+    self.maxY = maxY
+    self.res = res
+    self.epsg = epsg
+    self.data = data
+    self.nX = None
+    self.nY = None
 
+    # Calculate grid size if possible
+    if all(v is not None for v in [minX, maxX, minY, maxY, res]):
+        if maxX > minX and maxY > minY and res > 0:
+            self.nX = int((maxX - minX) / res)
+            self.nY = int((maxY - minY) / res)
+        else:
+            raise ValueError("Invalid bounds or resolution: check that max > min and res > 0")
+    else:
+        self.nX = None
+        self.nY = None
+  
 
   ########################################
 
-  def writeTiff(self,data,filename="chm.tif",epsg=27700):
+  def writeTiff(self,data,filename="dem_image.tif",epsg=4326):
     '''
     Write a geotiff from a raster layer
     '''
@@ -57,26 +73,22 @@ class tiffHandle():
 
   ########################################
 
-  def readTiff(self,filename):
+  def readTiff(self, filename):
     '''
-    Read a geotiff in to RAM
+    Read a geotiff into RAM
     '''
+    ds = gdal.Open(filename)
+    self.nX = ds.RasterXSize
+    self.nY = ds.RasterYSize
 
-    # open a dataset object
-    ds=gdal.Open(filename)
-    # could use gdal.Warp to reproject if wanted?
+    transform_ds = ds.GetGeoTransform()
+    self.minX = transform_ds[0]
+    self.res = transform_ds[1]
+    self.maxY = transform_ds[3]
+    self.maxX = self.minX + self.nX * self.res
+    self.minY = self.maxY + self.nY * transform_ds[5]
 
-    # read data from geotiff object
-    self.nX=ds.RasterXSize             # number of pixels in x direction
-    self.nY=ds.RasterYSize             # number of pixels in y direction
-    # geolocation tiepoint
-    transform_ds = ds.GetGeoTransform()# extract geolocation information
-    self.xOrigin=transform_ds[0]       # coordinate of x corner
-    self.yOrigin=transform_ds[3]       # coordinate of y corner
-    self.pixelWidth=transform_ds[1]    # resolution in x direction
-    self.pixelHeight=transform_ds[5]   # resolution in y direction
-    # read data. Returns as a 2D numpy array
-    self.data=ds.GetRasterBand(1).ReadAsArray(0,0,self.nX,self.nY)
+    self.data = ds.GetRasterBand(1).ReadAsArray(0, 0, self.nX, self.nY)
 
 
 #######################################################

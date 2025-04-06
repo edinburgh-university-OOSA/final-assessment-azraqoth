@@ -1,0 +1,9 @@
+numpy
+scipy
+gdal
+pyproj
+h5py
+shapely
+fiona
+tqdm
+tracemalloc
